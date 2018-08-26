@@ -160,7 +160,7 @@ if __name__ == '__main__':
         exploration = PiecewiseSchedule([
             (0, 1.0),
             (1e6 / 4, 0.1), # (approximate_num_iters / 50, 0.1),
-            (5e6 / 4, 0.01) # (approximate_num_iters / 5, 0.01)
+            # (5e6 / 4, 0.01) # (approximate_num_iters / 5, 0.01)
         ], outside_value=0.01)
         learning_rate = PiecewiseSchedule([
             (0, 1e-4),
