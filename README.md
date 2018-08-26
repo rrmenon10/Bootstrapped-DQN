@@ -9,14 +9,6 @@ To train the network :
 ```bash
 python train.py --env=(Game)
 ```
+Results from training over 50M steps:
 
-Some Atari game scores after training on 40 million frames:
-
-| Game | Score (averaged over last 100 episodes) |
-|-------|----------------------------------------|
-| Pong | 20.53 |
-| Enduro | 501.48 |
-| Freeway | 32.81 |
-| Seaquest | 4989.4 |
-| Kangaroo | 3476 |
-| Riverraid | 5307.9 |
+<img src="data/bdqn_repo.png" width="500">
