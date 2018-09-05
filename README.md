@@ -9,6 +9,8 @@ To train the network :
 ```bash
 python train.py --env=(Game)
 ```
+In case the train file is not viewable, please find the files in the "main_files" directory.
+
 Results from training over 50M steps:
 
 <img src="data/bdqn_repo.png" width="500">
