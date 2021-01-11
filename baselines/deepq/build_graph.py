@@ -71,7 +71,7 @@ import tensorflow as tf
 import baselines.common.tf_util as U
 
 
-def build_act(make_obs_ph, q_func, num_actions, bootstrap=False, scope="deepq", reuse=None):
+def build_act(make_obs_ph, q_func, num_actions, bootstrap=False, scope="deepq", reuse=None, device_name='kuu'):
     """Creates the act function:
 
     Parameters
@@ -111,8 +111,8 @@ def build_act(make_obs_ph, q_func, num_actions, bootstrap=False, scope="deepq", 
 
             eps = tf.get_variable("eps", (), initializer=tf.constant_initializer(0))
 
-            with tf.device("/gpu:0"):
-                q_values = q_func(observations_ph.get(), num_actions, scope="q_func")
+            with tf.device(device_name):
+                q_values = q_func(observations_ph.get(),device_name, num_actions, scope="q_func")
 
             q_values = tf.gather(q_values, head)
             deterministic_actions = tf.argmax(q_values, axis=1)
@@ -155,7 +155,7 @@ def build_act(make_obs_ph, q_func, num_actions, bootstrap=False, scope="deepq", 
                              updates=[update_eps_expr])
             return act
 
-def build_train(make_obs_ph, q_func, num_actions, optimizer, bootstrap=False, grad_norm_clipping=None, gamma=1.0, double_q=True, scope="deepq", reuse=None):
+def build_train(make_obs_ph, q_func, num_actions, optimizer, bootstrap=False, grad_norm_clipping=None, gamma=1.0, double_q=True, scope="deepq", reuse=None, device_name='kuu'):
     """Creates the train function:
 
     Parameters
@@ -204,7 +204,7 @@ def build_train(make_obs_ph, q_func, num_actions, optimizer, bootstrap=False, gr
     debug: {str: function}
         a bunch of functions to print debug data like q_values.
     """
-    act_f = build_act(make_obs_ph, q_func, bootstrap=bootstrap, num_actions=num_actions, scope=scope, reuse=reuse)
+    act_f = build_act(make_obs_ph, q_func, bootstrap=bootstrap, num_actions=num_actions, scope=scope, reuse=reuse,device_name=device_name)
 
     with tf.variable_scope(scope, reuse=reuse):
         # set up placeholders
@@ -218,13 +218,13 @@ def build_train(make_obs_ph, q_func, num_actions, optimizer, bootstrap=False, gr
 
         lr = tf.get_variable("lr", (), initializer=tf.constant_initializer(0))
 
-        with tf.device("/gpu:0"):
+        with tf.device(device_name):
             # q network evaluation
-            q_t = q_func(obs_t_input.get(), num_actions, scope="q_func", reuse=True)  # reuse parameters from act
+            q_t = q_func(obs_t_input.get(),device_name, num_actions, scope="q_func", reuse=True)  # reuse parameters from act
             q_func_vars = U.scope_vars(U.absolute_scope_name("q_func"))
 
             # target q network evalution
-            q_tp1 = q_func(obs_tp1_input.get(), num_actions, scope="target_q_func")
+            q_tp1 = q_func(obs_tp1_input.get(),device_name, num_actions, scope="target_q_func")
             target_q_func_vars = U.scope_vars(U.absolute_scope_name("target_q_func"))
 
             # q scores for actions which we know were selected in the given state.
@@ -236,7 +236,7 @@ def build_train(make_obs_ph, q_func, num_actions, optimizer, bootstrap=False, gr
             q_tp1_best = []
             q_tp1_best_using_online_net =[]
             if double_q:
-                q_tp1_using_online_net = q_func(obs_tp1_input.get(), num_actions, scope="q_func", reuse=True)
+                q_tp1_using_online_net = q_func(obs_tp1_input.get(),device_name, num_actions, scope="q_func", reuse=True)
                 for i in range(10):
                     q_tp1_best_using_online_net.append(tf.arg_max(q_tp1_using_online_net[i], 1))
                     q_tp1_best.append(tf.reduce_sum(q_tp1[i] * tf.one_hot(q_tp1_best_using_online_net[i], num_actions), 1))
@@ -261,7 +261,7 @@ def build_train(make_obs_ph, q_func, num_actions, optimizer, bootstrap=False, gr
 
             # compute the error (potentially clipped)
             td_error.append(q_t_selected[i] - tf.stop_gradient(q_t_selected_target[i]))
-            with tf.device("/gpu:0"):
+            with tf.device(device_name):
                 errors.append(U.huber_loss(td_error[i]))
             weighted_error.append(tf.reduce_mean(importance_weights_ph * errors[i]))
             # compute optimization op (potentially with gradient clipping)

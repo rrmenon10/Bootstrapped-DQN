@@ -36,7 +36,9 @@ def parse_args():
     # Environment
     parser.add_argument("--env", type=str, default="Seaquest", help="name of the game")
     parser.add_argument("--seed", type=int, default=42, help="which seed to use")
-    parser.add_argument("--device_name", type=str, default='/device:GPU:0', help="CPU or GPU name")
+    parser.add_argument("--device_name", type=str, default='/device:CPU:0', help="CPU or GPU name")
+    #parser.add_argument("--device_name", type=str, default='kwaa', help="CPU or GPU name")
+
 
     # Core DQN parameters
     parser.add_argument("--replay-buffer-size", type=int, default=int(1e6), help="replay buffer size")
@@ -147,7 +149,8 @@ if __name__ == '__main__':
                 optimizer=tf.train.AdamOptimizer(learning_rate=args.lr, epsilon=1e-4),
                 gamma=0.99,
                 grad_norm_clipping=10,
-                double_q=args.double_q
+                double_q=args.double_q,
+                device_name=args.device_name
             )
         else:
             act, train, update_target, debug = deepq.build_train(
@@ -157,7 +160,9 @@ if __name__ == '__main__':
                 optimizer=tf.train.AdamOptimizer(learning_rate=args.lr, epsilon=1e-4),
                 gamma=0.99,
                 grad_norm_clipping=10,
-                double_q=args.double_q
+                double_q=args.double_q,
+                device_name=args.device_name
+
             )
 
         approximate_num_iters = args.num_steps / 4
