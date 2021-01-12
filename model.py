@@ -39,10 +39,9 @@ def dueling_model(img_in, num_actions, scope, reuse=False):
             action_scores = layers.fully_connected(actions_hidden, num_outputs=num_actions, activation_fn=None)
             action_scores_mean = tf.reduce_mean(action_scores, 1)
             action_scores = action_scores - tf.expand_dims(action_scores_mean, 1)
-
         return state_score + action_scores
 
-def bootstrap_model(img_in,device_name, num_actions, scope, reuse=False):
+def bootstrap_model(img_in,device_name,num_heads, num_actions, scope,reuse=False):
     """ As described in https://arxiv.org/abs/1602.04621"""
     with tf.variable_scope(scope, reuse=reuse), tf.device(device_name):
         out = img_in
@@ -55,7 +54,7 @@ def bootstrap_model(img_in,device_name, num_actions, scope, reuse=False):
 
         out_list =[]
         with tf.variable_scope("heads"):
-            for _ in range(10):
+            for _ in range(num_heads):
                 scope_net = "action_value_head_" + str(_)
                 with tf.variable_scope(scope_net):
                     out_temp = out

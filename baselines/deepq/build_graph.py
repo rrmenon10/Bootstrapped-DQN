@@ -71,7 +71,7 @@ import tensorflow as tf
 import baselines.common.tf_util as U
 
 
-def build_act(make_obs_ph, q_func, num_actions, bootstrap=False, scope="deepq", reuse=None, device_name='kuu'):
+def build_act(make_obs_ph, q_func, num_actions, num_heads,bootstrap=False, scope="deepq", reuse=None, device_name='kuu'):
     """Creates the act function:
 
     Parameters
@@ -108,11 +108,9 @@ def build_act(make_obs_ph, q_func, num_actions, bootstrap=False, scope="deepq", 
             stochastic_ph = tf.placeholder(tf.bool, (), name="stochastic")
             head = tf.placeholder(tf.int32, (), name="head")
             update_eps_ph = tf.placeholder(tf.float32, (), name="update_eps")
-
             eps = tf.get_variable("eps", (), initializer=tf.constant_initializer(0))
-
             with tf.device(device_name):
-                q_values = q_func(observations_ph.get(),device_name, num_actions, scope="q_func")
+                q_values = q_func(observations_ph.get(),device_name,num_heads, num_actions, scope="q_func")
 
             q_values = tf.gather(q_values, head)
             deterministic_actions = tf.argmax(q_values, axis=1)
@@ -155,7 +153,7 @@ def build_act(make_obs_ph, q_func, num_actions, bootstrap=False, scope="deepq", 
                              updates=[update_eps_expr])
             return act
 
-def build_train(make_obs_ph, q_func, num_actions, optimizer, bootstrap=False, grad_norm_clipping=None, gamma=1.0, double_q=True, scope="deepq", reuse=None, device_name='kuu'):
+def build_train(make_obs_ph, q_func, num_actions,num_heads, optimizer, bootstrap=False, grad_norm_clipping=None, gamma=1.0, double_q=True, scope="deepq", reuse=None, device_name='kuu'):
     """Creates the train function:
 
     Parameters
@@ -204,7 +202,13 @@ def build_train(make_obs_ph, q_func, num_actions, optimizer, bootstrap=False, gr
     debug: {str: function}
         a bunch of functions to print debug data like q_values.
     """
-    act_f = build_act(make_obs_ph, q_func, bootstrap=bootstrap, num_actions=num_actions, scope=scope, reuse=reuse,device_name=device_name)
+    act_f = build_act(make_obs_ph, q_func,
+                      bootstrap=bootstrap,
+                      num_actions=num_actions,
+                      num_heads=num_heads,
+                      scope=scope,
+                      reuse=reuse,
+                      device_name=device_name)
 
     with tf.variable_scope(scope, reuse=reuse):
         # set up placeholders
@@ -220,28 +224,28 @@ def build_train(make_obs_ph, q_func, num_actions, optimizer, bootstrap=False, gr
 
         with tf.device(device_name):
             # q network evaluation
-            q_t = q_func(obs_t_input.get(),device_name, num_actions, scope="q_func", reuse=True)  # reuse parameters from act
+            q_t = q_func(obs_t_input.get(),device_name,num_heads, num_actions, scope="q_func", reuse=True)  # reuse parameters from act
             q_func_vars = U.scope_vars(U.absolute_scope_name("q_func"))
 
             # target q network evalution
-            q_tp1 = q_func(obs_tp1_input.get(),device_name, num_actions, scope="target_q_func")
+            q_tp1 = q_func(obs_tp1_input.get(),device_name,num_heads, num_actions, scope="target_q_func")
             target_q_func_vars = U.scope_vars(U.absolute_scope_name("target_q_func"))
 
             # q scores for actions which we know were selected in the given state.
             q_t_selected = []
-            for i in range(10):
+            for i in range(num_heads):
                 q_t_selected.append(tf.reduce_sum(q_t[i] * tf.one_hot(act_t_ph, num_actions), 1))
 
             # compute estimate of best possible value starting from state at t + 1
             q_tp1_best = []
             q_tp1_best_using_online_net =[]
             if double_q:
-                q_tp1_using_online_net = q_func(obs_tp1_input.get(),device_name, num_actions, scope="q_func", reuse=True)
-                for i in range(10):
+                q_tp1_using_online_net = q_func(obs_tp1_input.get(),device_name,num_heads, num_actions, scope="q_func", reuse=True)
+                for i in range(num_heads):
                     q_tp1_best_using_online_net.append(tf.arg_max(q_tp1_using_online_net[i], 1))
                     q_tp1_best.append(tf.reduce_sum(q_tp1[i] * tf.one_hot(q_tp1_best_using_online_net[i], num_actions), 1))
             else:
-                for i in range(10):
+                for i in range(num_heads):
                     q_tp1_best.append(tf.reduce_max(q_tp1, 1))
 
         q_tp1_best_masked =[]
@@ -253,7 +257,7 @@ def build_train(make_obs_ph, q_func, num_actions, optimizer, bootstrap=False, gr
         optimizer = tf.train.AdamOptimizer(learning_rate=lr, beta1=0.9, beta2=0.99, epsilon=1e-4)
         q_func_heads = U.scope_vars(U.absolute_scope_name("q_func/heads"))
         q_func_convnets = U.scope_vars(U.absolute_scope_name("q_func/convnet"))
-        for i in range(10):
+        for i in range(num_heads):
             q_tp1_best_masked.append((1.0 - done_mask_ph) * q_tp1_best[i])
 
             # compute RHS of bellman equation
