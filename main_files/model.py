@@ -44,7 +44,7 @@ def dueling_model(img_in, num_actions, scope, reuse=False):
 
 def bootstrap_model(img_in, num_actions, scope, reuse=False):
     """ As described in https://arxiv.org/abs/1602.04621"""
-    with tf.variable_scope(scope, reuse=reuse), tf.device("/gpu:0"):
+    with tf.variable_scope(scope, reuse=reuse), tf.device(device_name):
         out = img_in
         with tf.variable_scope("convnet"):
             # original architecture
